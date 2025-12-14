@@ -50,6 +50,32 @@ pub enum MouseProtocolEncoding {
     // Urxvt,
 }
 
+/// The cursor's visual style.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
+pub enum CursorStyle {
+    /// The cursor should match the terminal's default.
+    #[default]
+    Default,
+
+    /// The cursor should be a blinking block.
+    BlinkBlock,
+
+    /// The cursor should be a steady block.
+    SteadyBlock,
+
+    /// The cursor should be a blinking underline.
+    BlinkUnderline,
+
+    /// The cursor should be a steady underline.
+    SteadyUnderline,
+
+    /// The cursor should be a blinking vertical bar.
+    BlinkVerticalBar,
+
+    /// The cursor should be a steady vertical bar.
+    SteadyVerticalBar,
+}
+
 /// Represents the overall terminal state.
 #[derive(Clone, Debug)]
 pub struct Screen {
@@ -64,6 +90,7 @@ pub struct Screen {
     mouse_protocol_encoding: MouseProtocolEncoding,
 
     last_char: Option<char>,
+    cursor_style: CursorStyle,
 }
 
 impl Screen {
@@ -85,6 +112,7 @@ impl Screen {
             mouse_protocol_encoding: MouseProtocolEncoding::default(),
 
             last_char: None,
+            cursor_style: CursorStyle::default(),
         }
     }
 
@@ -407,6 +435,11 @@ impl Screen {
             MouseProtocolEncoding::Default,
         )
         .write_buf(contents);
+        crate::term::CursorStyle::new(
+            self.cursor_style,
+            CursorStyle::Default,
+        )
+        .write_buf(contents);
     }
 
     /// Returns terminal escape sequences sufficient to change the previous
@@ -451,6 +484,8 @@ impl Screen {
             prev.mouse_protocol_encoding,
         )
         .write_buf(contents);
+        crate::term::CursorStyle::new(self.cursor_style, prev.cursor_style)
+            .write_buf(contents);
     }
 
     /// Returns terminal escape sequences sufficient to set the current
@@ -589,6 +624,12 @@ impl Screen {
         self.mouse_protocol_encoding
     }
 
+    /// Returns the currently active [`CursorStyle`].
+    #[must_use]
+    pub fn cursor_style(&self) -> CursorStyle {
+        self.cursor_style
+    }
+
     /// Returns the currently active foreground color.
     #[must_use]
     pub fn fgcolor(&self) -> crate::Color {
@@ -702,6 +743,10 @@ impl Screen {
         if self.mouse_protocol_encoding == encoding {
             self.mouse_protocol_encoding = MouseProtocolEncoding::default();
         }
+    }
+
+    fn set_cursor_style(&mut self, style: CursorStyle) {
+        self.cursor_style = style;
     }
 }
 
@@ -1055,6 +1100,24 @@ impl Screen {
     }
 
     // csi codes
+
+    // CSI SP
+    pub(crate) fn decscusr(
+        &mut self,
+        cursor_style: u16,
+        mut unhandled: impl FnMut(&mut Self),
+    ) {
+        match cursor_style {
+            0 => self.set_cursor_style(CursorStyle::Default),
+            1 => self.set_cursor_style(CursorStyle::BlinkBlock),
+            2 => self.set_cursor_style(CursorStyle::SteadyBlock),
+            3 => self.set_cursor_style(CursorStyle::BlinkUnderline),
+            4 => self.set_cursor_style(CursorStyle::SteadyUnderline),
+            5 => self.set_cursor_style(CursorStyle::BlinkVerticalBar),
+            6 => self.set_cursor_style(CursorStyle::SteadyVerticalBar),
+            _ => unhandled(self),
+        }
+    }
 
     // CSI @
     pub(crate) fn ich(&mut self, count: u16) {
