@@ -62,6 +62,8 @@ pub struct Screen {
     modes: u8,
     mouse_protocol_mode: MouseProtocolMode,
     mouse_protocol_encoding: MouseProtocolEncoding,
+
+    last_char: Option<char>,
 }
 
 impl Screen {
@@ -81,6 +83,8 @@ impl Screen {
             modes: 0,
             mouse_protocol_mode: MouseProtocolMode::default(),
             mouse_protocol_encoding: MouseProtocolEncoding::default(),
+
+            last_char: None,
         }
     }
 
@@ -930,6 +934,7 @@ impl Screen {
                 // that self.grid().pos().col has a valid value.
                 .unwrap();
             cell.set(c, attrs);
+            self.last_char = Some(c);
             self.grid_mut().col_inc(1);
             if width > 1 {
                 let pos = self.grid().pos();
@@ -1091,6 +1096,20 @@ impl Screen {
     // CSI G
     pub(crate) fn cha(&mut self, col: u16) {
         self.grid_mut().col_set(col - 1);
+    }
+
+    // CSI `  (HPA - Horizontal Position Absolute, equivalent to CHA)
+    pub(crate) fn hpa(&mut self, col: u16) {
+        self.cha(col);
+    }
+
+    // CSI b (REP - Repeat last printed character)
+    pub(crate) fn rep(&mut self, count: u16) {
+        if let Some(c) = self.last_char {
+            for _ in 0..count {
+                self.text(c);
+            }
+        }
     }
 
     // CSI H
