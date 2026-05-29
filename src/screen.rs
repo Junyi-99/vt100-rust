@@ -855,12 +855,34 @@ impl Screen {
                         .drawing_cell_mut(base_pos)
                         .unwrap()
                         .set_wide(true);
+                    let cont_pos = crate::grid::Pos {
+                        row: pos.row,
+                        col: cont_col,
+                    };
+                    // If the continuation column already holds the first half
+                    // of an existing wide glyph, clear that glyph's own
+                    // continuation first so it isn't left orphaned (mirrors
+                    // the wide-character placement in the width > 1 branch).
+                    if self
+                        .grid()
+                        .drawing_cell(cont_pos)
+                        // cont_col < size.cols was just checked.
+                        .unwrap()
+                        .is_wide()
+                        && cont_col + 1 < size.cols
+                    {
+                        self.grid_mut()
+                            .drawing_cell_mut(crate::grid::Pos {
+                                row: pos.row,
+                                col: cont_col + 1,
+                            })
+                            // cont_col + 1 < size.cols was just checked.
+                            .unwrap()
+                            .clear(crate::attrs::Attrs::default());
+                    }
                     let cont = self
                         .grid_mut()
-                        .drawing_cell_mut(crate::grid::Pos {
-                            row: pos.row,
-                            col: cont_col,
-                        })
+                        .drawing_cell_mut(cont_pos)
                         // cont_col < size.cols was just checked.
                         .unwrap();
                     cont.clear(crate::attrs::Attrs::default());

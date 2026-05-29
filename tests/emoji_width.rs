@@ -81,3 +81,28 @@ fn default_emoji_presentation_unaffected() {
     assert!(c[1].2, "continuation");
     assert_eq!(c[2].0, "Y");
 }
+
+#[test]
+fn vs16_promotion_over_existing_wide_char_does_not_orphan_continuation() {
+    // col0='a', col1-2='中' (wide + continuation).
+    let mut parser = vt100::Parser::new(1, 6, 0);
+    parser.process("a\u{4E2D}".as_bytes());
+    // Move the cursor back to col0 and write a text-presentation base + VS16.
+    // The base lands on col0; its continuation lands on col1, which is the
+    // first half of 中 — so promotion must also clear 中's now-stranded
+    // continuation at col2 instead of leaving it orphaned.
+    parser.process(b"\x1b[1;1H");
+    parser.process("\u{2764}\u{FE0F}".as_bytes());
+
+    let c = cells(&parser, 4);
+    assert_eq!(
+        c[0],
+        ("\u{2764}\u{FE0F}".into(), true, false),
+        "col0 = ❤️ wide"
+    );
+    assert_eq!(c[1].2, true, "col1 = ❤️ continuation");
+    assert!(
+        !c[2].2,
+        "col2 (clobbered 中's old continuation) must be cleared, not orphaned"
+    );
+}
