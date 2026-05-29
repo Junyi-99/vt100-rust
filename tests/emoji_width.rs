@@ -1,12 +1,6 @@
-// Regression tests for emoji-presentation width.
-//
-// A text-presentation base codepoint followed by U+FE0F (VARIATION
-// SELECTOR-16) requests *emoji presentation*, which real terminals, tmux,
-// and `unicode-width`'s string-level `width()` all render as two columns.
-// vt100 historically decided a cell's wide flag from the base char alone
-// (width 1), so the VS16 sequence was stored as a single narrow cell. That
-// left every column after the emoji shifted by one, producing on-screen
-// residue. These tests pin the corrected, two-column layout.
+// Regression tests for emoji-presentation width: a base char + U+FE0F
+// (VS16) is two columns, but vt100 used to store it as one narrow cell,
+// shifting everything after it and leaving on-screen residue.
 
 fn cells(parser: &vt100::Parser, n: u16) -> Vec<(String, bool, bool)> {
     let screen = parser.screen();
@@ -25,7 +19,6 @@ fn cells(parser: &vt100::Parser, n: u16) -> Vec<(String, bool, bool)> {
 #[test]
 fn vs16_emoji_occupies_two_columns() {
     let mut parser = vt100::Parser::new(1, 20, 0);
-    // "A" + ❤️ (U+2764 U+FE0F) + "B"
     parser.process("A\u{2764}\u{FE0F}B".as_bytes());
 
     let c = cells(&parser, 5);
@@ -41,14 +34,11 @@ fn vs16_emoji_occupies_two_columns() {
         "col2 must be a wide continuation"
     );
     assert_eq!(c[3], ("B".into(), false, false), "col3 = B (not shifted)");
-
-    // cursor lands after B: A(1) + emoji(2) + B(1) = col 4
     assert_eq!(parser.screen().cursor_position(), (0, 4));
 }
 
 #[test]
 fn vs16_promotion_over_existing_wide_char_does_not_orphan_continuation() {
-    // col0='a', col1-2='中' (wide + continuation).
     let mut parser = vt100::Parser::new(1, 6, 0);
     parser.process("a\u{4E2D}".as_bytes());
     // Move the cursor back to col0 and write a text-presentation base + VS16.

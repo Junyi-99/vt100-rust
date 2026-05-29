@@ -829,15 +829,12 @@ impl Screen {
                     .unwrap()
                     .append(c);
 
-                // A combining character such as U+FE0F (variation selector-16)
-                // can promote a text-presentation base char to emoji
-                // presentation, which occupies two columns. unicode-width
-                // reflects this at the string level, and so do real terminals
-                // and tmux, but our wide flag was computed from the base char
-                // alone (width 1). If the cell is now double-width yet still
-                // flagged narrow, widen it and turn the following cell into a
-                // wide continuation so the column layout stays aligned with
-                // what was drawn to us.
+                // U+FE0F (variation selector-16) promotes a text-presentation
+                // base char to emoji presentation, which is two columns at the
+                // string level (and to terminals/tmux), though our wide flag
+                // was set from the base char alone. If the cell grew to double
+                // width but is still flagged narrow, widen it and add a wide
+                // continuation so later columns stay aligned.
                 let cont_col = base_col + 1;
                 let promote = cont_col < size.cols && {
                     let cell = self
