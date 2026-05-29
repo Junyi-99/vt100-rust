@@ -21,6 +21,7 @@ vte = "0.15.0"
 
 [dev-dependencies]
 nix = { version = "0.30.1", features = ["term"] }
+portable-pty = "0.9"
 quickcheck = "1.0"
 rand = "0.9"
 serde = { version = "1.0.219", features = ["derive"] }
