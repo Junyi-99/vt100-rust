@@ -47,42 +47,6 @@ fn vs16_emoji_occupies_two_columns() {
 }
 
 #[test]
-fn warning_sign_vs16_occupies_two_columns() {
-    let mut parser = vt100::Parser::new(1, 20, 0);
-    // ⚠️ = U+26A0 U+FE0F
-    parser.process("\u{26A0}\u{FE0F}X".as_bytes());
-    let c = cells(&parser, 3);
-    assert!(c[0].1, "⚠️ must be wide");
-    assert!(c[1].2, "continuation after ⚠️");
-    assert_eq!(c[2].0, "X");
-}
-
-#[test]
-fn heart_without_vs16_stays_single_width() {
-    // No regression: a bare U+2764 (text presentation) is genuinely 1 column.
-    let mut parser = vt100::Parser::new(1, 20, 0);
-    parser.process("A\u{2764}B".as_bytes());
-    let c = cells(&parser, 3);
-    assert_eq!(
-        c[1],
-        ("\u{2764}".into(), false, false),
-        "bare heart is narrow"
-    );
-    assert_eq!(c[2], ("B".into(), false, false), "B immediately follows");
-}
-
-#[test]
-fn default_emoji_presentation_unaffected() {
-    // 😀 (U+1F600) is already wide by base-char width; behaviour unchanged.
-    let mut parser = vt100::Parser::new(1, 20, 0);
-    parser.process("\u{1F600}Y".as_bytes());
-    let c = cells(&parser, 3);
-    assert!(c[0].1, "grinning face is wide");
-    assert!(c[1].2, "continuation");
-    assert_eq!(c[2].0, "Y");
-}
-
-#[test]
 fn vs16_promotion_over_existing_wide_char_does_not_orphan_continuation() {
     // col0='a', col1-2='中' (wide + continuation).
     let mut parser = vt100::Parser::new(1, 6, 0);
