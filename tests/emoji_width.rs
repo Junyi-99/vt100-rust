@@ -54,7 +54,7 @@ fn vs16_promotion_over_existing_wide_char_does_not_orphan_continuation() {
         ("\u{2764}\u{FE0F}".into(), true, false),
         "col0 = ❤️ wide"
     );
-    assert_eq!(c[1].2, true, "col1 = ❤️ continuation");
+    assert!(c[1].2, "col1 = ❤️ continuation");
     assert!(
         !c[2].2,
         "col2 (clobbered 中's old continuation) must be cleared, not orphaned"
